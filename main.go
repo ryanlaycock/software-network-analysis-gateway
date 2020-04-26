@@ -10,15 +10,20 @@ import (
 )
 
 const (
-    STATUS_ERROR     = "error"
-    STATUS_NOT_FOUND = "not_found"
-    STATUS_COMPLETE  = "complete"
+    STATUS_ERROR       = "error"
+    STATUS_NOT_FOUND   = "not_found"
+    STATUS_COMPLETE    = "complete"
+    STATUS_IN_PROGRESS = "in_progress"
 )
 
 var (
-    projectStatuses ProjectStatuses
-    projectCache    ProjectCache
-    snaUrl          string
+    projectStatuses   ProjectStatuses
+    projectCache      ProjectCache
+    artifactsCache    ArtifactsCache
+    pageRankCache     PageRankCache
+    artifactsStatuses ArtifactsStatuses
+    snaUrl            string
+    dnaUrl            string
 )
 
 type Status struct {
@@ -31,7 +36,22 @@ type ProjectCache struct {
     Projects map[string]Project
 }
 
+type ArtifactsCache struct {
+    Mutex     sync.Mutex
+    Artifacts map[string]Artifacts
+}
+
+type PageRankCache struct {
+    Mutex sync.Mutex
+    Ranks map[string]Ranks
+}
+
 type ProjectStatuses struct {
+    Mutex  sync.Mutex
+    Status map[string]Status
+}
+
+type ArtifactsStatuses struct {
     Mutex  sync.Mutex
     Status map[string]Status
 }
@@ -40,22 +60,6 @@ type IncomingStatus struct {
     Status      string `json:"status"`
     Msg         string `json:"msg"`
     ProjectName string `json:"project_name"`
-}
-
-type ArtifactStats struct {
-    ArtifactId    string  `json:"id"`
-    ArtifactName  string  `json:"name"`
-    ArtifactGroup string  `json:"group"`
-    Type          string  `json:"type"`
-    InternalId    string  `json:"internal_id"`
-    PageRank      float32 `json:"page_rank"`
-}
-
-type Artifacts struct {
-    Artifacts              []ArtifactStats `json:"artifacts"`
-    DirectDependencies     []ArtifactStats `json:"direct_dependencies"`
-    TransitiveDependencies []ArtifactStats `json:"transitive_dependecies"`
-    Dependents             []ArtifactStats `json:"dependents"`
 }
 
 func updateProjectStatus(w http.ResponseWriter, r *http.Request) {
@@ -86,6 +90,19 @@ func getProjectStatus(projectName string) (Status, bool) {
     return status, found
 }
 
+func setArtifactsStatus(projectName string, status Status) {
+    artifactsStatuses.Mutex.Lock()
+    artifactsStatuses.Status[projectName] = status
+    artifactsStatuses.Mutex.Unlock()
+}
+
+func getArtifactsStatus(projectName string) (Status, bool) {
+    projectStatuses.Mutex.Lock()
+    status, found := artifactsStatuses.Status[projectName]
+    projectStatuses.Mutex.Unlock()
+    return status, found
+}
+
 func setProjectCache(projectName string, project Project) {
     projectCache.Mutex.Lock()
     projectCache.Projects[projectName] = project
@@ -99,19 +116,44 @@ func getProjectFromCache(projectName string) (Project, bool) {
     return project, found
 }
 
+func setArtifactsCache(projectName string, artifacts Artifacts) {
+    artifactsCache.Mutex.Lock()
+    artifactsCache.Artifacts[projectName] = artifacts
+    artifactsCache.Mutex.Unlock()
+}
+
+func getArtifactFromCache(projectName string) (Artifacts, bool) {
+    artifactsCache.Mutex.Lock()
+    artifacts, found := artifactsCache.Artifacts[projectName]
+    artifactsCache.Mutex.Unlock()
+    return artifacts, found
+}
+
+func middleware(next http.Handler) http.Handler {
+    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        w.Header().Add("Content-Type", "application/json")
+        w.Header().Set("Access-Control-Allow-Origin", "*")
+        next.ServeHTTP(w, r)
+    })
+}
+
 func main() {
     snaUrl = os.Getenv("SNA_ADDR")
-    projectStatuses = ProjectStatuses{}
-    projectStatuses.Status = map[string]Status{}
-    projectStatuses.Mutex = sync.Mutex{}
-    projectCache = ProjectCache{}
-    projectCache.Projects = map[string]Project{}
-    projectCache.Mutex = sync.Mutex{}
+    dnaUrl = os.Getenv("DNA_ADDR")
+
+    projectStatuses = ProjectStatuses{Status: map[string]Status{}, Mutex: sync.Mutex{}}
+    artifactsStatuses = ArtifactsStatuses{Status: map[string]Status{}, Mutex: sync.Mutex{}}
+    projectCache = ProjectCache{Projects: map[string]Project{}, Mutex: sync.Mutex{}}
+    artifactsCache = ArtifactsCache{Artifacts: map[string]Artifacts{}, Mutex: sync.Mutex{}}
+    pageRankCache = PageRankCache{Ranks: map[string]Ranks{}, Mutex: sync.Mutex{}}
 
     router := mux.NewRouter()
+    router.Use(middleware)
+    router.Use(mux.CORSMethodMiddleware(router))
 
     router.HandleFunc("/projects/{owner}/{repo}/metrics", getMetrics).Methods("GET")
     router.HandleFunc("/projects/{owner}/{repo}/status", updateProjectStatus).Methods("POST")
+    router.HandleFunc("/artifacts/{owner}/{repo}/metrics", getArtifacts).Methods("GET")
 
     err := http.ListenAndServe(":8080", router)
     if err != nil {

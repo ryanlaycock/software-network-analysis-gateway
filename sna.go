@@ -10,7 +10,7 @@ import (
 
 type ProjectStats struct {
     ProjectId   string  `json:"id"`
-    InternalId  string  `json:"internal_id"`
+    InternalId  int     `json:"internal_id"`
     Type        string  `json:"type"`
     NetworkComp float32 `json:"network_comp"`
     CodeChurn   float32 `json:"code_churn"`
@@ -20,7 +20,7 @@ type PackageStats struct {
     PackageId   string  `json:"id"`
     PackageName string  `json:"name"`
     Type        string  `json:"type"`
-    InternalId  string  `json:"internal_id"`
+    InternalId  int     `json:"internal_id"`
     NetworkComp float32 `json:"network_comp"`
 }
 
@@ -28,7 +28,7 @@ type ClassOrInterfaceStats struct {
     ClassOrInterfaceId   string  `json:"id"`
     ClassOrInterfaceName string  `json:"name"`
     Type                 string  `json:"type"`
-    InternalId           string  `json:"internal_id"`
+    InternalId           int     `json:"internal_id"`
     NetworkComp          float32 `json:"network_comp"`
 }
 
@@ -36,7 +36,7 @@ type MethodStats struct {
     MethodId    string  `json:"id"`
     MethodName  string  `json:"name"`
     Type        string  `json:"type"`
-    InternalId  string  `json:"internal_id"`
+    InternalId  int     `json:"internal_id"`
     NetworkComp float32 `json:"network_comp"`
 }
 
@@ -52,10 +52,12 @@ func getMetrics(w http.ResponseWriter, r *http.Request) {
     owner, ownerSet := vars["owner"]
     if !ownerSet {
         print("Error getting owner.")
+        return
     }
     repo, repoSet := vars["repo"]
     if !repoSet {
         print("Error getting repo.")
+        return
     }
     projectName := owner + "/" + repo
     fmt.Println("Get metrics request for: " + projectName)
