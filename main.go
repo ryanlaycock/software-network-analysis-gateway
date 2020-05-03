@@ -14,6 +14,7 @@ const (
     STATUS_NOT_FOUND   = "not_found"
     STATUS_COMPLETE    = "complete"
     STATUS_IN_PROGRESS = "in_progress"
+    STATUS_CANNOT_PARSE = "cannot_parse"
 )
 
 var (

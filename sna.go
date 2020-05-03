@@ -9,11 +9,13 @@ import (
 )
 
 type ProjectStats struct {
-    ProjectId   string  `json:"id"`
-    InternalId  int     `json:"internal_id"`
-    Type        string  `json:"type"`
-    NetworkComp float32 `json:"network_comp"`
-    CodeChurn   float32 `json:"code_churn"`
+    ProjectId      string  `json:"id"`
+    InternalId     int     `json:"internal_id"`
+    Type           string  `json:"type"`
+    NetworkComp    float32 `json:"network_comp"`
+    CodeChurn      float32 `json:"code_churn"`
+    NetworkCompMsg string  `json:"network_comp_msg"`
+    CodeChurnMsg   string  `json:"code_churn_msg"`
 }
 
 type PackageStats struct {
@@ -83,7 +85,7 @@ func getMetrics(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    // Not in cache or in progress, try and get from SNA
+    // Not in cache or in progress, try and get from SNA (already parsed and in DB)
     projectFetched := getProject(owner, repo)
     if projectFetched {
         project, _ := getProjectFromCache(projectName)
@@ -95,25 +97,14 @@ func getMetrics(w http.ResponseWriter, r *http.Request) {
     }
 
     // Project not yet parsed. Attempt to trigger analysis.
-    if isProjectValid(owner, repo) {
-        go triggerAnalysis(owner, repo)
-        w.WriteHeader(http.StatusAccepted)
-        writeErr := json.NewEncoder(w).Encode(map[string]string{
-            "status": "initiating_parsing",
-            "msg": "Analysing project.",
-        })
-        if writeErr != nil {
-            fmt.Println("Write error:", writeErr)
-        }
-    } else {
-        w.WriteHeader(http.StatusNotFound)
-        writeErr := json.NewEncoder(w).Encode(map[string]string{
-            "status": "invalid_project",
-            "msg": "Project cannot be parsed. Is it Java, built with Maven and publicly available on GitHub.com?",
-        })
-        if writeErr != nil {
-            fmt.Println("Write error:", writeErr)
-        }
+    go triggerAnalysis(owner, repo)
+    w.WriteHeader(http.StatusAccepted)
+    writeErr := json.NewEncoder(w).Encode(map[string]string{
+        "status": "initiating_parsing",
+        "msg":    "Analysing project.",
+    })
+    if writeErr != nil {
+        fmt.Println("Write error:", writeErr)
     }
 }
 
@@ -132,20 +123,6 @@ func getProject(owner, repo string) bool {
         setProjectCache(projectName, project)
         setProjectStatus(projectName, Status{Status: STATUS_COMPLETE})
         return true
-    }
-    return false
-}
-
-func isProjectValid(owner, repo string) bool {
-    resp, err := http.Get(snaUrl + "/projects/" + owner + "/" + repo + "/valid")
-    if err != nil {
-        fmt.Println("Error:", err)
-    }
-    if resp.StatusCode == http.StatusOK {
-        return true
-    } else if resp.StatusCode == http.StatusInternalServerError {
-        fmt.Println("Error message")
-        return false
     }
     return false
 }
@@ -170,6 +147,9 @@ func triggerAnalysis(owner, repo string) {
         return
     } else if resp.StatusCode == http.StatusNotFound {
         setProjectStatus(owner+"/"+repo, Status{Status: STATUS_NOT_FOUND})
+        return
+    } else if resp.StatusCode == http.StatusServiceUnavailable {
+        setProjectStatus(owner+"/"+repo, Status{Status: STATUS_CANNOT_PARSE, Msg: "Project cannot be analysed as it has not been parsed and system is running in standalone mode."})
         return
     }
     var project Project
