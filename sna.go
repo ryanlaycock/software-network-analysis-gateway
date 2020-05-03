@@ -98,15 +98,19 @@ func getMetrics(w http.ResponseWriter, r *http.Request) {
     if isProjectValid(owner, repo) {
         go triggerAnalysis(owner, repo)
         w.WriteHeader(http.StatusAccepted)
-        // TODO User message
-        writeErr := json.NewEncoder(w).Encode(map[string]string{"status": "initiating_parsing"})
+        writeErr := json.NewEncoder(w).Encode(map[string]string{
+            "status": "initiating_parsing",
+            "msg": "Analysing project.",
+        })
         if writeErr != nil {
             fmt.Println("Write error:", writeErr)
         }
     } else {
         w.WriteHeader(http.StatusNotFound)
-        // TODO User message
-        writeErr := json.NewEncoder(w).Encode(map[string]string{"status": "invalid_project"})
+        writeErr := json.NewEncoder(w).Encode(map[string]string{
+            "status": "invalid_project",
+            "msg": "Project cannot be parsed. Is it Java, built with Maven and publicly available on GitHub.com?",
+        })
         if writeErr != nil {
             fmt.Println("Write error:", writeErr)
         }

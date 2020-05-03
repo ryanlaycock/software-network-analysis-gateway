@@ -151,9 +151,12 @@ func main() {
     router.Use(middleware)
     router.Use(mux.CORSMethodMiddleware(router))
 
+    // External endpoints
     router.HandleFunc("/projects/{owner}/{repo}/metrics", getMetrics).Methods("GET")
-    router.HandleFunc("/projects/{owner}/{repo}/status", updateProjectStatus).Methods("POST")
     router.HandleFunc("/artifacts/{owner}/{repo}/metrics", getArtifacts).Methods("GET")
+
+    // Internal endpoints
+    router.HandleFunc("/projects/{owner}/{repo}/status", updateProjectStatus).Methods("POST")
 
     err := http.ListenAndServe(":8080", router)
     if err != nil {

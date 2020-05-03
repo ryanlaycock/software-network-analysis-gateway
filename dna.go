@@ -108,9 +108,9 @@ func artifactsWithRank(artifacts Artifacts) ArtifactsResponse {
     defer pageRankCache.Mutex.Unlock()
     artifactsRank := ArtifactsResponse{
         Artifacts:              addRank(artifacts.Artifacts),
-        DirectDependencies:     addRank(artifacts.Dependents),
-        TransitiveDependencies: addRank(artifacts.DirectDependencies),
-        Dependents:             addRank(artifacts.TransitiveDependencies),
+        DirectDependencies:     addRank(artifacts.DirectDependencies),
+        TransitiveDependencies: addRank(artifacts.TransitiveDependencies),
+        Dependents:             addRank(artifacts.Dependents),
     }
     return artifactsRank
 }
@@ -202,7 +202,7 @@ func fetchArtifacts(owner, repo string) bool {
         setArtifactsStatus(projectName, Status{Status: STATUS_COMPLETE})
         return true
     } else {
-        setArtifactsStatus(projectName, Status{Status: STATUS_NOT_FOUND})
+        setArtifactsStatus(projectName, Status{Status: STATUS_NOT_FOUND, Msg: "Cannot parse invalid project's dependency graph."})
     }
     return false
 }
