@@ -1,0 +1,43 @@
+openapi: "3.0.0"
+info:
+  version: 1.0.0
+  title: Software Network Analysis Gateway
+  description: Gateway REST API for the Software Network Analysis
+  license:
+paths:
+  /projects/{owner}/{repo}/metrics:
+    get:
+      description: Returns the components and metrics for the project
+      responses:
+        '200':
+          description: Returns all the metrics for the project
+          content:
+            application/json:
+              schema:
+                type: array
+        '202':
+          description: The project is being parsed, returns status
+          content:
+            application/json:
+              schema:
+                type: array
+        '404':
+          description: The project cannot be found
+  /artifacts/{owner}/{repo}/metrics:
+    get:
+      description: Returns the artifatcs, dependents and dependendcies for the project
+      responses:
+        '200':
+          description: Returns all the artifacts of the project
+          content:
+            application/json:
+              schema:
+                type: array
+        '202':
+          description: The artifacts are being parsed, returns status
+          content:
+            application/json:
+              schema:
+                type: array
+        '404':
+          description: The project cannot be found
