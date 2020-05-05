@@ -7,6 +7,7 @@ import (
     "net/http"
     "os"
     "sync"
+    "time"
 )
 
 const (
@@ -64,14 +65,13 @@ type IncomingStatus struct {
 }
 
 func updateProjectStatus(w http.ResponseWriter, r *http.Request) {
-    fmt.Println("Status update")
     var incomingStatus IncomingStatus
     err := json.NewDecoder(r.Body).Decode(&incomingStatus)
     if err != nil {
         http.Error(w, err.Error(), 400)
         return
     }
-    fmt.Println("Update: " + incomingStatus.Status)
+    fmt.Println(logTime(), "Progress update:", incomingStatus)
     setProjectStatus(incomingStatus.ProjectName, Status{
         Status: incomingStatus.Status,
         Msg:    incomingStatus.Msg,
@@ -138,7 +138,12 @@ func middleware(next http.Handler) http.Handler {
     })
 }
 
+func logTime() string {
+    return time.Now().Format("2006-01-02 15:04:05")
+}
+
 func main() {
+    fmt.Println(logTime(), "Initiating Software Network Analysis gateway.")
     snaUrl = os.Getenv("SNA_ADDR")
     dnaUrl = os.Getenv("DNA_ADDR")
 
@@ -159,8 +164,8 @@ func main() {
     // Internal endpoints
     router.HandleFunc("/projects/{owner}/{repo}/status", updateProjectStatus).Methods("POST")
 
-    err := http.ListenAndServe(":8080", router)
+    err := http.ListenAndServe(":8070", router)
     if err != nil {
-        fmt.Println(err)
+        fmt.Println(logTime(), "An error occurred initiating server:", err)
     }
 }

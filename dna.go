@@ -48,16 +48,16 @@ func getArtifacts(w http.ResponseWriter, r *http.Request) {
     vars := mux.Vars(r)
     owner, ownerSet := vars["owner"]
     if !ownerSet {
-        print("Error getting owner.")
+        fmt.Println(logTime(), "Error getting owner.")
         return
     }
     repo, repoSet := vars["repo"]
     if !repoSet {
-        print("Error getting repo.")
+        fmt.Println(logTime(), "Error getting repo.")
         return
     }
     projectName := owner + "/" + repo
-    fmt.Println("Get artifacts request for: " + projectName)
+    fmt.Println(logTime(), "Get artifacts request for: " + projectName)
 
     // Check if parsing in progress
     // TODO Simplify
@@ -73,7 +73,7 @@ func getArtifacts(w http.ResponseWriter, r *http.Request) {
             "msg":    status.Msg,
         })
         if writeErr != nil {
-            fmt.Println("Write error:", writeErr)
+            fmt.Println(logTime(), "Write error:", writeErr)
         }
         return
     }
@@ -84,7 +84,7 @@ func getArtifacts(w http.ResponseWriter, r *http.Request) {
         artifactsRank.ProjectStats = getProjectOverallStats(artifactsRank)
         writeErr := json.NewEncoder(w).Encode(artifactsRank)
         if writeErr != nil {
-            fmt.Println("Write error:", writeErr)
+            fmt.Println(logTime(), "Write error:", writeErr)
         }
         return
     }
@@ -98,7 +98,7 @@ func getArtifacts(w http.ResponseWriter, r *http.Request) {
         "msg":    status.Msg,
     })
     if writeErr != nil {
-        fmt.Println("Write error:", writeErr)
+        fmt.Println(logTime(), "Write error:", writeErr)
     }
 
 }
@@ -144,31 +144,30 @@ func addRank(artifacts map[string]ArtifactStats) []ArtifactStats {
                 OverallRank:   pageRank.OverallRank,
             })
         } else {
-            print("PageRank not found for artifact id: " + id)
+            fmt.Println(logTime(), "PageRank not found for artifact id: " + id)
         }
     }
     return artifactRank
 }
 
 func fetchPageRanks() {
-    fmt.Println("Fetching pageRanks")
+    fmt.Println(logTime(), "Fetching all pageranks.")
     resp, err := http.Get(dnaUrl + "/artifacts/pageranks")
     if err != nil {
-        fmt.Println("Error:", err)
+        fmt.Println(logTime(), "Error:", err)
     }
     if resp.StatusCode == http.StatusOK {
         var ranks map[string]Ranks
         err := json.NewDecoder(resp.Body).Decode(&ranks)
         if err != nil {
-            fmt.Println("Error:", err)
+            fmt.Println(logTime(), "Error:", err)
         }
-        fmt.Println(ranks)
         pageRankCache.Mutex.Lock()
         defer pageRankCache.Mutex.Unlock()
         pageRankCache.Ranks = ranks
         return
     }
-    print("An error occurred fetching page ranks. Status code: " + string(resp.StatusCode))
+    fmt.Println(logTime(), "An error occurred fetching page ranks. Status code: ", resp.StatusCode)
 }
 
 func artifactsInCache(artifacts map[string]ArtifactStats) bool {
@@ -186,13 +185,13 @@ func fetchArtifacts(owner, repo string) bool {
     projectName := owner + "/" + repo
     resp, err := http.Get(dnaUrl + "/artifacts/" + owner + "/" + repo)
     if err != nil {
-        fmt.Println("Error:", err)
+        fmt.Println(logTime(), "Error:", err)
     }
     if resp.StatusCode == http.StatusOK {
         var artifacts Artifacts
         err := json.NewDecoder(resp.Body).Decode(&artifacts)
         if err != nil {
-            fmt.Println("Error:", err)
+            fmt.Println(logTime(), "Error:", err)
         }
         setArtifactsCache(projectName, artifacts)
         // Parsing complete, check if artifacts already in pagerank. Rebuild if not (new project to the system)
