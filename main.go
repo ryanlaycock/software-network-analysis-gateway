@@ -164,7 +164,7 @@ func main() {
     // Internal endpoints
     router.HandleFunc("/projects/{owner}/{repo}/status", updateProjectStatus).Methods("POST")
 
-    err := http.ListenAndServe(":8070", router)
+    err := http.ListenAndServe(":8080", router)
     if err != nil {
         fmt.Println(logTime(), "An error occurred initiating server:", err)
     }
